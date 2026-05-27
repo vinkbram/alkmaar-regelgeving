@@ -13,6 +13,17 @@
     {% endfor %}
 </div>
 
+{% if matching_tags %}
+<div class="card">
+    <h2>Overeenkomende tags</h2>
+    <div class="tag-cloud">
+        {% for t in matching_tags %}
+        <a href="/tag/{{ t.id }}" class="tag">{{ t.label }} <span class="tag-count">({{ t.cnt }} artikelen)</span></a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
 {% if results %}
 <p>{{ results|length }} resultaten{% if q %} voor "{{ q }}"{% endif %}</p>
 <ul class="reg-list">

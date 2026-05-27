@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ subdomain.name }} — Regelgeving Alkmaar{% endblock %}
+{% block content %}
+<div class="breadcrumb">
+    <a href="/">Overzicht</a> &rsaquo; {{ subdomain.commissie_name }} &rsaquo; {{ subdomain.name }}
+</div>
+
+<h1>{{ subdomain.name }}</h1>
+
+{% for tp in topics %}
+<div class="card">
+    <h2><a href="/topic/{{ tp.code }}" style="text-decoration: none; color: var(--green-mid);">{{ tp.name }}</a> <span class="tag-count">({{ tp.article_count }} artikelen)</span></h2>
+    <div class="tag-cloud">
+        {% for tg in tp.tags %}
+        <a href="/tag/{{ tg.id }}" class="tag">{{ tg.label }} <span class="tag-count">({{ tg.article_count }})</span></a>
+        {% endfor %}
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

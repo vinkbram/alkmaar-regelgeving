@@ -1,25 +1,26 @@
 {% extends "base.html" %}
-{% block title %}{{ subject.name_nl }} — Regelgeving Alkmaar{% endblock %}
+{% block title %}{{ topic.name }} — Regelgeving Alkmaar{% endblock %}
 {% block content %}
 <div class="breadcrumb">
     <a href="/">Overzicht</a>
-    {% for bc in breadcrumb %}
-    &rsaquo; {% if loop.last %}{{ bc.name_nl }}{% else %}<a href="/onderwerp/{{ bc.code }}">{{ bc.name_nl }}</a>{% endif %}
-    {% endfor %}
+    {% if subdomain %}
+    &rsaquo; <a href="/onderwerp/{{ subdomain.code }}">{{ subdomain.name }}</a>
+    {% endif %}
+    &rsaquo; {{ topic.name }}
 </div>
 
-<h1>{{ subject.name_nl }}</h1>
+<h1>{{ topic.name }}</h1>
 
-{% if children %}
-<div class="subject-grid">
-    {% for ch in children %}
-    <div class="subject-card">
-        <h3><a href="/onderwerp/{{ ch.code }}">{{ ch.name_nl }}</a> <span class="tag-count">({{ ch.reg_count }})</span></h3>
+<div class="card">
+    <h2>Tags</h2>
+    <div class="tag-cloud">
+        {% for tg in tags %}
+        <a href="/tag/{{ tg.id }}" class="tag">{{ tg.label }} <span class="tag-count">({{ tg.article_count }})</span></a>
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
-{% endif %}
 
+{% if regulations %}
 <h2>Regelingen ({{ regulations|length }})</h2>
 <ul class="reg-list">
     {% for r in regulations %}
@@ -31,11 +32,12 @@
             <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
         </div>
         <div class="reg-content">
-            <a href="/regeling/{{ r.cvdr_id }}?subject={{ subject.code }}" class="reg-card-title">{{ r.title }}</a>
+            <a href="/regeling/{{ r.cvdr_id }}" class="reg-card-title">{{ r.title }}</a>
             {% if r.summary %}<p class="reg-summary">{{ r.summary|truncate(150) }}</p>{% endif %}
             <div class="reg-meta">{{ r.authority or "?" }} &middot; {{ r.effective_from or "?" }}</div>
         </div>
     </li>
     {% endfor %}
 </ul>
+{% endif %}
 {% endblock %}

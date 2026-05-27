@@ -13,19 +13,18 @@
     {% endfor %}
 </div>
 
-<h2>Onderwerpen</h2>
-<div class="subject-grid">
-    {% for s in subjects %}
-    <div class="subject-card">
-        <h3><a href="/onderwerp/{{ s.code }}">{{ s.name_nl }}</a></h3>
-        {% if s.children %}
-        <ul class="subject-children">
-            {% for ch in s.children %}
-            <li><a href="/onderwerp/{{ ch.code }}">{{ ch.name_nl }}</a> <span class="tag-count">({{ ch.reg_count }})</span></li>
-            {% endfor %}
-        </ul>
-        {% endif %}
+<h2>Navigatie per commissie</h2>
+{% for c in commissies %}
+<div class="commissie-section">
+    <h3>{{ c.name }}</h3>
+    <div class="subject-grid">
+        {% for sd in c.subdomains %}
+        <div class="subject-card">
+            <h3><a href="/onderwerp/{{ sd.code }}">{{ sd.name }}</a></h3>
+            <span class="tag-count">{{ sd.article_count }} artikelen</span>
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
 </div>
+{% endfor %}
 {% endblock %}

@@ -1,24 +1,38 @@
 {% extends "base.html" %}
-{% block title %}Tag: {{ tag.name }} — Regelgeving Alkmaar{% endblock %}
+{% block title %}{{ tag.label }} — Regelgeving Alkmaar{% endblock %}
 {% block content %}
-<div class="breadcrumb"><a href="/">Overzicht</a> &rsaquo; <a href="/tags">Tags</a> &rsaquo; {{ tag.name }}</div>
-<h1>Tag: {{ tag.name }}</h1>
-<p>{{ regulations|length }} regelingen met deze tag.</p>
-<ul class="reg-list">
-    {% for r in regulations %}
-    {% set dti = doc_type_info.get(r.doc_type, doc_type_default) %}
-    <li class="reg-item-card">
-        <div class="reg-badges">
-            <span class="badge badge-doctype" title="{{ dti[2] }}">{{ dti[1] }}</span>
-            {% set cls = classification_nl.get(r.proposal_classification, ("?","green")) %}
-            <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
-        </div>
-        <div class="reg-content">
-            <a href="/regeling/{{ r.cvdr_id }}" class="reg-card-title">{{ r.title }}</a>
-            {% if r.summary %}<p class="reg-summary">{{ r.summary|truncate(150) }}</p>{% endif %}
-            <div class="reg-meta">{{ r.authority or "?" }} &middot; {{ r.effective_from or "?" }}</div>
-        </div>
-    </li>
+<div class="breadcrumb">
+    <a href="/">Overzicht</a>
+    {% if topic %}
+    &rsaquo; <a href="/onderwerp/{{ topic.subdomain_code }}">{{ topic.subdomain_name }}</a>
+    &rsaquo; <a href="/topic/{{ topic.code }}">{{ topic.name }}</a>
+    {% else %}
+    &rsaquo; <a href="/tags">Tags</a>
+    {% endif %}
+    &rsaquo; {{ tag.label }}
+</div>
+
+<h1>{{ tag.label }}</h1>
+{% if tag.synonyms %}<p style="color: var(--gray-500); font-size: 0.9rem;">Synoniemen: {{ tag.synonyms|replace('|', ', ') }}</p>{% endif %}
+
+<p>{{ reg_groups|length }} regelingen, {{ reg_groups|sum(attribute='articles')|default(0, true) }} artikelen</p>
+
+{% for rg in reg_groups %}
+<div class="card">
+    {% set dti = doc_type_info.get(rg.doc_type, doc_type_default) %}
+    <div style="display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.5rem;">
+        <span class="badge badge-doctype">{{ dti[1] }}</span>
+        {% set cls = classification_nl.get(rg.proposal_classification, ("?","green")) %}
+        <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
+        <a href="/regeling/{{ rg.cvdr_id }}?tag={{ tag.id }}" style="font-weight: 600; text-decoration: none; color: var(--gray-900);">{{ rg.title }}</a>
+    </div>
+    {% for a in rg.articles %}
+    <div class="article-block" style="margin-left: 1rem;">
+        <span class="article-title">Artikel {{ a.article_number }}{% if a.article_title %} — {{ a.article_title }}{% endif %}</span>
+        <div class="article-body">{{ a.body|truncate(300) }}</div>
+    </div>
+    {% if not loop.last %}<hr style="border: none; border-top: 1px solid var(--gray-200); margin: 0.25rem 1rem;">{% endif %}
     {% endfor %}
-</ul>
+</div>
+{% endfor %}
 {% endblock %}

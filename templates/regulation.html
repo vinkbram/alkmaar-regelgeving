@@ -18,9 +18,9 @@
     <p><a href="https://lokaleregelgeving.overheid.nl/{{ reg.cvdr_id }}/{{ reg.version }}" target="_blank">Bekijk op lokaleregelgeving.overheid.nl &rarr;</a></p>
 </div>
 
-{% if highlight_subject_name %}
+{% if highlight_tag_label %}
 <div class="highlight-banner">
-    Artikelen relevant voor <strong>{{ highlight_subject_name }}</strong> zijn gemarkeerd.
+    Artikelen met tag <strong>{{ highlight_tag_label }}</strong> zijn gemarkeerd.
     <a href="/regeling/{{ reg.cvdr_id }}">Markering verwijderen</a>
 </div>
 {% endif %}
@@ -39,23 +39,12 @@
 </div>
 {% endif %}
 
-{% if subjects %}
-<div class="card">
-    <h2>Onderwerpen</h2>
-    <div class="tag-cloud">
-        {% for s in subjects %}
-        <a href="/onderwerp/{{ s.code }}" class="tag">{{ s.name_nl }}</a>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-{% if tags %}
+{% if reg_tags %}
 <div class="card">
     <h2>Tags</h2>
     <div class="tag-cloud">
-        {% for t in tags %}
-        <a href="/tag/{{ t.id }}" class="tag">{{ t.name }}</a>
+        {% for t in reg_tags %}
+        <a href="/tag/{{ t.id }}" class="tag">{{ t.label }}</a>
         {% endfor %}
     </div>
 </div>
@@ -82,10 +71,10 @@
     <div class="article-block {% if highlighted_articles and a.id in highlighted_articles %}article-highlighted{% endif %}" id="art-{{ a.article_number }}">
         <div class="article-header">
             <span class="article-title">Artikel {{ a.article_number }}{% if a.article_title %} — {{ a.article_title }}{% endif %}</span>
-            {% if article_subjects and a.id in article_subjects %}
+            {% if article_tags and a.id in article_tags %}
             <div class="article-subjects">
-                {% for s in article_subjects[a.id] %}
-                <a href="/onderwerp/{{ s.code }}" class="tag tag-small">{{ s.name_nl }}</a>
+                {% for tg in article_tags[a.id] %}
+                <a href="/tag/{{ tg.id }}" class="tag tag-small">{{ tg.label }}</a>
                 {% endfor %}
             </div>
             {% endif %}
@@ -104,7 +93,13 @@
         {% for r in refs %}
         <li style="padding: 0.25rem 0; font-size: 0.9rem;">
             <span class="badge badge-blue" style="font-size: 0.7rem;">{{ r.ref_type }}</span>
-            {{ r.ref_name }}{% if r.ref_detail %} — {{ r.ref_detail }}{% endif %}
+            {% if r.link %}
+            <a href="{{ r.link }}" {% if 'wetten.overheid' in r.link %}target="_blank"{% endif %}>{{ r.ref_name }}</a>
+            {% if r.link_title %}<span style="color: var(--gray-500);"> — {{ r.link_title }}</span>{% endif %}
+            {% else %}
+            {{ r.ref_name }}
+            {% endif %}
+            {% if r.ref_detail %} — {{ r.ref_detail }}{% endif %}
         </li>
         {% endfor %}
     </ul>
