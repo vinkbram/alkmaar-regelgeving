@@ -259,21 +259,32 @@ def regulation(cvdr_id):
     sections = query("SELECT * FROM sections WHERE regulation_id=%s ORDER BY sort_order", (reg["id"],))
     articles = query("SELECT * FROM articles WHERE regulation_id=%s ORDER BY sort_order", (reg["id"],))
     refs_raw = query("SELECT * FROM law_references WHERE regulation_id=%s ORDER BY ref_type, ref_name", (reg["id"],))
-    # Enrich refs with links
+    # Enrich refs with links — prefer link_url from database
     refs = []
     for r in refs_raw:
         ref = dict(r)
         ref["link"] = None
-        name = r["ref_name"] or ""
-        if name.startswith("CVDR"):
-            cvdr = name.split()[0].split(",")[0]
+        ref["link_title"] = None
+        # Use pre-resolved link_url if available
+        link_url = r.get("link_url") or ""
+        if link_url.startswith("/regeling/"):
+            # Internal link — resolve title
+            cvdr = link_url.replace("/regeling/", "")
             local = query("SELECT cvdr_id, title FROM regulations WHERE cvdr_id=%s", (cvdr,), one=True)
             if local:
-                ref["link"] = f"/regeling/{local['cvdr_id']}"
+                ref["link"] = link_url
                 ref["link_title"] = local["title"]
-        ref_type = (r["ref_type"] or "").lower()
-        if not ref["link"] and ref_type in ("rijkswet", "legislation", "law"):
-            ref["link"] = f"https://wetten.overheid.nl/zoeken?q={name.replace(' ', '+')}"
+        elif link_url.startswith("https://"):
+            ref["link"] = link_url
+        else:
+            # Fallback: try to match CVDR refs by name
+            name = r["ref_name"] or ""
+            if name.startswith("CVDR"):
+                cvdr = name.split()[0].split(",")[0]
+                local = query("SELECT cvdr_id, title FROM regulations WHERE cvdr_id=%s", (cvdr,), one=True)
+                if local:
+                    ref["link"] = f"/regeling/{local['cvdr_id']}"
+                    ref["link_title"] = local["title"]
         refs.append(ref)
     # Article tags
     art_tags = {}
