@@ -15,7 +15,7 @@
 <h1>{{ tag.label }}</h1>
 {% if tag.synonyms %}<p style="color: var(--gray-500); font-size: 0.9rem;">Synoniemen: {{ tag.synonyms|replace('|', ', ') }}</p>{% endif %}
 
-<p>{{ reg_groups|length }} regelingen, {{ reg_groups|sum(attribute='articles')|default(0, true) }} artikelen</p>
+<p>{{ reg_groups|length }} regelingen</p>
 
 {% for rg in reg_groups %}
 <div class="card">
