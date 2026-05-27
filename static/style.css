@@ -227,6 +227,22 @@ a { color: var(--blue); }
 
 .section-block { margin: 1rem 0; padding-left: 1rem; border-left: 2px solid var(--gray-200); }
 .article-block { margin: 0.75rem 0; }
+.highlight-banner {
+    background: #FFF8E1;
+    border-left: 4px solid #F57F17;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    border-radius: 0 6px 6px 0;
+    font-size: 0.9rem;
+}
+.highlight-banner a { margin-left: 1rem; font-size: 0.85rem; }
+.article-highlighted {
+    background: var(--green-light);
+    border-left: 3px solid var(--green-mid);
+    padding-left: 0.75rem;
+    margin-left: -0.75rem;
+    border-radius: 0 4px 4px 0;
+}
 .article-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem; margin-bottom: 0.25rem; }
 .article-title { font-weight: 600; font-size: 0.95rem; }
 .article-subjects { display: flex; flex-wrap: wrap; gap: 0.25rem; }

@@ -61,6 +61,13 @@ def inject_helpers():
 def doc_type_sort_key(doc_type):
     return DOC_TYPE_INFO.get(doc_type, DOC_TYPE_DEFAULT)[0]
 
+def reg_sort_key(r):
+    """Sort: intrekken/registercorrectie always last, then by doc_type importance, then title."""
+    cls = r.get("proposal_classification", "")
+    if cls in ("intrekken", "registercorrectie"):
+        return (100, doc_type_sort_key(r.get("doc_type")), r.get("title") or "")
+    return (0, doc_type_sort_key(r.get("doc_type")), r.get("title") or "")
+
 # --- ROUTES ---
 
 @app.route("/")
@@ -69,6 +76,16 @@ def index():
     for r in query("SELECT proposal_classification, COUNT(*) as n FROM regulations GROUP BY proposal_classification"):
         counts[r["proposal_classification"]] = r["n"]
     subjects = query("SELECT * FROM subjects WHERE depth=0 ORDER BY name_nl")
+    # Get children for each top-level subject
+    for s in subjects:
+        s["children"] = query("""
+            SELECT s.*, COUNT(DISTINCT rs.regulation_id) as reg_count
+            FROM subjects s
+            LEFT JOIN regulation_subjects rs ON rs.subject_id = s.id
+            WHERE s.parent_id=%s
+            GROUP BY s.id, s.parent_id, s.code, s.name_nl, s.name_en, s.depth
+            ORDER BY s.name_nl
+        """, (s["id"],))
     return render_template("index.html", counts=counts, subjects=subjects, total=475)
 
 @app.route("/zoeken")
@@ -96,7 +113,14 @@ def subject(code):
     subj = query("SELECT * FROM subjects WHERE code=%s", (code,), one=True)
     if not subj:
         return "Onderwerp niet gevonden", 404
-    children = query("SELECT * FROM subjects WHERE parent_id=%s ORDER BY name_nl", (subj["id"],))
+    children = query("""
+        SELECT s.*, COUNT(DISTINCT rs.regulation_id) as reg_count
+        FROM subjects s
+        LEFT JOIN regulation_subjects rs ON rs.subject_id = s.id
+        WHERE s.parent_id=%s
+        GROUP BY s.id, s.parent_id, s.code, s.name_nl, s.name_en, s.depth
+        ORDER BY s.name_nl
+    """, (subj["id"],))
     # Breadcrumb
     breadcrumb = [subj]
     parent = subj
@@ -114,7 +138,7 @@ def subject(code):
         JOIN regulation_subjects rs ON r.id = rs.regulation_id
         WHERE rs.subject_id = ANY(%s)
     """, (subject_ids,))
-    regulations.sort(key=lambda r: (doc_type_sort_key(r["doc_type"]), r["title"] or ""))
+    regulations.sort(key=reg_sort_key)
     return render_template("subject.html", subject=subj, children=children,
                            breadcrumb=breadcrumb, regulations=regulations)
 
@@ -137,11 +161,12 @@ def tag_detail(tag_id):
         JOIN regulation_tags rt ON r.id = rt.regulation_id
         WHERE rt.tag_id=%s
     """, (tag_id,))
-    regulations.sort(key=lambda r: (doc_type_sort_key(r["doc_type"]), r["title"] or ""))
+    regulations.sort(key=reg_sort_key)
     return render_template("tag_detail.html", tag=tag, regulations=regulations)
 
 @app.route("/regeling/<cvdr_id>")
 def regulation(cvdr_id):
+    highlight_subject = request.args.get("subject", "")
     reg = query("SELECT * FROM regulations WHERE cvdr_id=%s", (cvdr_id,), one=True)
     if not reg:
         return "Regeling niet gevonden", 404
@@ -190,9 +215,30 @@ def regulation(cvdr_id):
         """, (art_ids,))
         for row in art_sub_rows:
             art_subjects.setdefault(row["article_id"], []).append(row)
+    # Build set of article IDs that match the highlight subject
+    highlighted_articles = set()
+    highlight_subject_name = ""
+    if highlight_subject and articles:
+        hs = query("SELECT id, name_nl FROM subjects WHERE code=%s", (highlight_subject,), one=True)
+        if hs:
+            highlight_subject_name = hs["name_nl"]
+            # Get all descendant subject IDs too
+            hs_ids = [hs["id"]]
+            for ch in query("SELECT id FROM subjects WHERE parent_id=%s", (hs["id"],)):
+                hs_ids.append(ch["id"])
+                for gc in query("SELECT id FROM subjects WHERE parent_id=%s", (ch["id"],)):
+                    hs_ids.append(gc["id"])
+            matched = query("""
+                SELECT DISTINCT article_id FROM article_subjects
+                WHERE article_id = ANY(%s) AND subject_id = ANY(%s)
+            """, ([a["id"] for a in articles], hs_ids))
+            highlighted_articles = {r["article_id"] for r in matched}
     return render_template("regulation.html", reg=reg, sections=sections,
                            articles=articles, tags=reg_tags, subjects=subjects,
-                           refs=refs, article_subjects=art_subjects)
+                           refs=refs, article_subjects=art_subjects,
+                           highlighted_articles=highlighted_articles,
+                           highlight_subject=highlight_subject,
+                           highlight_subject_name=highlight_subject_name)
 
 @app.route("/api/search")
 def api_search():

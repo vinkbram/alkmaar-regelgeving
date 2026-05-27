@@ -18,6 +18,13 @@
     {% for s in subjects %}
     <div class="subject-card">
         <h3><a href="/onderwerp/{{ s.code }}">{{ s.name_nl }}</a></h3>
+        {% if s.children %}
+        <ul class="subject-children">
+            {% for ch in s.children %}
+            <li><a href="/onderwerp/{{ ch.code }}">{{ ch.name_nl }}</a> <span class="tag-count">({{ ch.reg_count }})</span></li>
+            {% endfor %}
+        </ul>
+        {% endif %}
     </div>
     {% endfor %}
 </div>

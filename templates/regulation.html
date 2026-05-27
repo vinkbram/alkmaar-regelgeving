@@ -18,6 +18,13 @@
     <p><a href="https://lokaleregelgeving.overheid.nl/{{ reg.cvdr_id }}/{{ reg.version }}" target="_blank">Bekijk op lokaleregelgeving.overheid.nl &rarr;</a></p>
 </div>
 
+{% if highlight_subject_name %}
+<div class="highlight-banner">
+    Artikelen relevant voor <strong>{{ highlight_subject_name }}</strong> zijn gemarkeerd.
+    <a href="/regeling/{{ reg.cvdr_id }}">Markering verwijderen</a>
+</div>
+{% endif %}
+
 {% if reg.proposal_action %}
 <div class="detail-action {% if reg.proposal_classification == 'intrekken' %}red{% elif reg.proposal_classification == 'registercorrectie' %}amber{% endif %}">
     <strong>{{ reg.proposal_action }}</strong>
@@ -72,7 +79,7 @@
 <div class="card">
     <h2>Artikelen ({{ articles|length }})</h2>
     {% for a in articles %}
-    <div class="article-block" id="art-{{ a.article_number }}">
+    <div class="article-block {% if highlighted_articles and a.id in highlighted_articles %}article-highlighted{% endif %}" id="art-{{ a.article_number }}">
         <div class="article-header">
             <span class="article-title">Artikel {{ a.article_number }}{% if a.article_title %} — {{ a.article_title }}{% endif %}</span>
             {% if article_subjects and a.id in article_subjects %}

@@ -14,7 +14,7 @@
 <div class="subject-grid">
     {% for ch in children %}
     <div class="subject-card">
-        <h3><a href="/onderwerp/{{ ch.code }}">{{ ch.name_nl }}</a></h3>
+        <h3><a href="/onderwerp/{{ ch.code }}">{{ ch.name_nl }}</a> <span class="tag-count">({{ ch.reg_count }})</span></h3>
     </div>
     {% endfor %}
 </div>
@@ -31,7 +31,7 @@
             <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
         </div>
         <div class="reg-content">
-            <a href="/regeling/{{ r.cvdr_id }}" class="reg-card-title">{{ r.title }}</a>
+            <a href="/regeling/{{ r.cvdr_id }}?subject={{ subject.code }}" class="reg-card-title">{{ r.title }}</a>
             {% if r.summary %}<p class="reg-summary">{{ r.summary|truncate(150) }}</p>{% endif %}
             <div class="reg-meta">{{ r.authority or "?" }} &middot; {{ r.effective_from or "?" }}</div>
         </div>
