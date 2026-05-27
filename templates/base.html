@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Regelgeving Alkmaar{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <div class="nav-inner">
+            <a href="/" class="nav-brand">Regelgeving Alkmaar</a>
+            <div class="nav-links">
+                <a href="/">Overzicht</a>
+                <a href="/tags">Tags</a>
+                <a href="/zoeken">Zoeken</a>
+            </div>
+            <form action="/zoeken" method="get" class="nav-search">
+                <input type="search" name="q" placeholder="Zoek in regelgeving..." value="{{ request.args.get('q', '') }}">
+            </form>
+        </div>
+    </nav>
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        <p>475 geldende regelingen gemeente Alkmaar &middot; Peildatum mei 2026 &middot; PRO Alkmaar</p>
+    </footer>
+</body>
+</html>

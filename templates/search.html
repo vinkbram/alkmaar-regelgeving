@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Zoeken — Regelgeving Alkmaar{% endblock %}
+{% block content %}
+<h1>Zoeken</h1>
+<form action="/zoeken" method="get" class="search-form">
+    <input type="search" name="q" placeholder="Zoek op trefwoord, titel, of inhoud..." value="{{ q }}" autofocus>
+</form>
+
+<div class="filter-chips">
+    <a href="/zoeken?q={{ q }}" class="chip {% if not classification %}active{% endif %}">Alles</a>
+    {% for key, (label, color) in classification_nl.items() %}
+    <a href="/zoeken?q={{ q }}&c={{ key }}" class="chip {% if classification == key %}active{% endif %}">{{ label }}</a>
+    {% endfor %}
+</div>
+
+{% if results %}
+<p>{{ results|length }} resultaten{% if q %} voor "{{ q }}"{% endif %}</p>
+<ul class="reg-list">
+    {% for r in results %}
+    <li class="reg-item">
+        {% set cls = classification_nl.get(r.proposal_classification, ("?","green")) %}
+        <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
+        <div class="reg-title">
+            <a href="/regeling/{{ r.cvdr_id }}">{{ r.title }}</a>
+            <div class="reg-meta">{{ r.authority or "?" }} &middot; {{ r.doc_type or "" }}</div>
+        </div>
+        <span class="reg-date">{{ r.effective_from or "?" }}</span>
+    </li>
+    {% endfor %}
+</ul>
+{% elif q or classification %}
+<p>Geen resultaten gevonden.</p>
+{% endif %}
+{% endblock %}

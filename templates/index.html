@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Regelgeving Alkmaar — Overzicht{% endblock %}
+{% block content %}
+<h1>Regelgeving gemeente Alkmaar</h1>
+<p>Alle {{ total }} geldende regelingen, individueel beoordeeld op actualiteit en wettelijke grondslag.</p>
+
+<div class="stats">
+    {% for key, (label, color) in classification_nl.items() %}
+    <a href="/zoeken?c={{ key }}" class="stat">
+        <div class="stat-number {{ color }}">{{ counts.get(key, 0) }}</div>
+        <div class="stat-label">{{ label }}</div>
+    </a>
+    {% endfor %}
+</div>
+
+<h2>Onderwerpen</h2>
+<div class="subject-grid">
+    {% for s in subjects %}
+    <div class="subject-card">
+        <h3><a href="/onderwerp/{{ s.code }}">{{ s.name_nl }}</a></h3>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

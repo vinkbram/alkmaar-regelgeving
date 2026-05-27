@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Tag: {{ tag.name }} — Regelgeving Alkmaar{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="/">Overzicht</a> &rsaquo; <a href="/tags">Tags</a> &rsaquo; {{ tag.name }}</div>
+<h1>Tag: {{ tag.name }}</h1>
+<p>{{ regulations|length }} regelingen met deze tag.</p>
+<ul class="reg-list">
+    {% for r in regulations %}
+    <li class="reg-item">
+        {% set cls = classification_nl.get(r.proposal_classification, ("?","green")) %}
+        <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
+        <div class="reg-title">
+            <a href="/regeling/{{ r.cvdr_id }}">{{ r.title }}</a>
+            <div class="reg-meta">{{ r.authority or "?" }} &middot; {{ r.effective_from or "?" }}</div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+{% endblock %}

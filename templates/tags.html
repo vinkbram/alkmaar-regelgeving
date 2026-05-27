@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Tags — Regelgeving Alkmaar{% endblock %}
+{% block content %}
+<h1>Tags</h1>
+<p>{{ tags|length }} tags toegekend aan regelingen.</p>
+<div class="tag-cloud">
+    {% for t in tags %}
+    <a href="/tag/{{ t.id }}" class="tag">{{ t.name }} <span class="tag-count">({{ t.cnt }})</span></a>
+    {% endfor %}
+</div>
+{% endblock %}

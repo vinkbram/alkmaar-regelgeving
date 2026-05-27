@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}{{ reg.title }} — Regelgeving Alkmaar{% endblock %}
+{% block content %}
+<div class="breadcrumb"><a href="/">Overzicht</a> &rsaquo; {{ reg.title|truncate(60) }}</div>
+
+<div class="detail-header">
+    <h1>{{ reg.title }}</h1>
+    {% set cls = classification_nl.get(reg.proposal_classification, ("?","green")) %}
+    <span class="badge badge-{{ cls[1] }}" style="font-size: 0.9rem;">{{ cls[0] }}</span>
+
+    <div class="detail-meta">
+        {% if reg.effective_from %}<span>Inwerkingtreding: <strong>{{ reg.effective_from }}</strong></span>{% endif %}
+        {% if reg.authority %}<span>Vastgesteld door: <strong>{{ reg.authority }}</strong></span>{% endif %}
+        {% if reg.doc_type %}<span>Type: <strong>{{ reg.doc_type }}</strong></span>{% endif %}
+        {% if reg.legal_basis %}<span>Grondslag: {{ reg.legal_basis }}</span>{% endif %}
+    </div>
+
+    <p><a href="https://lokaleregelgeving.overheid.nl/{{ reg.cvdr_id }}/{{ reg.version }}" target="_blank">Bekijk op lokaleregelgeving.overheid.nl &rarr;</a></p>
+</div>
+
+{% if reg.proposal_action %}
+<div class="detail-action {% if reg.proposal_classification == 'intrekken' %}red{% elif reg.proposal_classification == 'registercorrectie' %}amber{% endif %}">
+    <strong>{{ reg.proposal_action }}</strong>
+    {% if reg.proposal_reason %}<p style="margin-top: 0.5rem;">{{ reg.proposal_reason }}</p>{% endif %}
+</div>
+{% endif %}
+
+{% if reg.summary %}
+<div class="card">
+    <h2>Samenvatting</h2>
+    <p>{{ reg.summary }}</p>
+</div>
+{% endif %}
+
+{% if subjects %}
+<div class="card">
+    <h2>Onderwerpen</h2>
+    <div class="tag-cloud">
+        {% for s in subjects %}
+        <a href="/onderwerp/{{ s.code }}" class="tag">{{ s.name_nl }}</a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if tags %}
+<div class="card">
+    <h2>Tags</h2>
+    <div class="tag-cloud">
+        {% for t in tags %}
+        <a href="/tag/{{ t.id }}" class="tag">{{ t.name }}</a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if sections %}
+<div class="card">
+    <h2>Inhoudsopgave</h2>
+    {% for s in sections %}
+    {% if not s.parent_id %}
+    <div class="section-block">
+        <h3>{{ s.number }} {{ s.title }}</h3>
+        {% if s.body %}<p style="font-size: 0.9rem; color: var(--gray-700);">{{ s.body|truncate(300) }}</p>{% endif %}
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if articles %}
+<div class="card">
+    <h2>Artikelen ({{ articles|length }})</h2>
+    {% for a in articles %}
+    <div class="article-block">
+        <div class="article-title">Artikel {{ a.article_number }}{% if a.article_title %} — {{ a.article_title }}{% endif %}</div>
+        <div class="article-body">{{ a.body|truncate(500) }}</div>
+    </div>
+    <hr style="border: none; border-top: 1px solid var(--gray-200); margin: 0.5rem 0;">
+    {% endfor %}
+</div>
+{% endif %}
+
+{% if refs %}
+<div class="card">
+    <h2>Verwijzingen ({{ refs|length }})</h2>
+    <ul style="list-style: none;">
+        {% for r in refs %}
+        <li style="padding: 0.25rem 0; font-size: 0.9rem;">
+            <span class="badge badge-blue" style="font-size: 0.7rem;">{{ r.ref_type }}</span>
+            {{ r.ref_name }}{% if r.ref_detail %} — {{ r.ref_detail }}{% endif %}
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
+{% endblock %}
