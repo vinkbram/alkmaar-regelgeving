@@ -6,11 +6,16 @@
 <p>{{ regulations|length }} regelingen met deze tag.</p>
 <ul class="reg-list">
     {% for r in regulations %}
-    <li class="reg-item">
-        {% set cls = classification_nl.get(r.proposal_classification, ("?","green")) %}
-        <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
-        <div class="reg-title">
-            <a href="/regeling/{{ r.cvdr_id }}">{{ r.title }}</a>
+    {% set dti = doc_type_info.get(r.doc_type, doc_type_default) %}
+    <li class="reg-item-card">
+        <div class="reg-badges">
+            <span class="badge badge-doctype" title="{{ dti[2] }}">{{ dti[1] }}</span>
+            {% set cls = classification_nl.get(r.proposal_classification, ("?","green")) %}
+            <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
+        </div>
+        <div class="reg-content">
+            <a href="/regeling/{{ r.cvdr_id }}" class="reg-card-title">{{ r.title }}</a>
+            {% if r.summary %}<p class="reg-summary">{{ r.summary|truncate(150) }}</p>{% endif %}
             <div class="reg-meta">{{ r.authority or "?" }} &middot; {{ r.effective_from or "?" }}</div>
         </div>
     </li>

@@ -29,6 +29,23 @@ def close_db(exc):
     db = g.pop("db", None)
     if db: db.close()
 
+# Document type hierarchy: lower number = more important
+DOC_TYPE_INFO = {
+    "verordening":              (1, "Verordening", "Bindende regels vastgesteld door de raad"),
+    "gemeenschappelijke_regeling": (2, "Gemeenschappelijke regeling", "Samenwerkingsverband met andere gemeenten"),
+    "regeling":                 (3, "Regeling", "Uitvoeringsregels van college of raad"),
+    "beleidsregel":             (4, "Beleidsregel", "Beleidskader voor de uitvoering"),
+    "subsidieregeling":         (4, "Subsidieregeling", "Subsidiekader en -voorwaarden"),
+    "nota":                     (5, "Nota", "Beleidsnota of -visie"),
+    "omgevingsvisie":           (5, "Omgevingsvisie", "Langetermijnvisie op de leefomgeving"),
+    "nadere regels":            (4, "Nadere regels", "Uitwerking van een verordening"),
+    "mandaatbesluit":           (6, "Mandaatbesluit", "Overdracht van bevoegdheden"),
+    "ondermandaatbesluit":      (6, "Ondermandaatbesluit", "Verdere overdracht van bevoegdheden"),
+    "besluit":                  (7, "Besluit", "Eenmalig of uitvoeringsbesluit"),
+    "aanwijzingsbesluit":       (8, "Aanwijzingsbesluit", "Aanwijzing van locatie, persoon of gebied"),
+}
+DOC_TYPE_DEFAULT = (9, "Overig", "")
+
 CLASSIFICATION_NL = {
     "registercorrectie": ("Registercorrectie", "amber"),
     "intrekken": ("Intrekken", "red"),
@@ -39,7 +56,10 @@ CLASSIFICATION_NL = {
 
 @app.context_processor
 def inject_helpers():
-    return {"classification_nl": CLASSIFICATION_NL}
+    return {"classification_nl": CLASSIFICATION_NL, "doc_type_info": DOC_TYPE_INFO, "doc_type_default": DOC_TYPE_DEFAULT}
+
+def doc_type_sort_key(doc_type):
+    return DOC_TYPE_INFO.get(doc_type, DOC_TYPE_DEFAULT)[0]
 
 # --- ROUTES ---
 
@@ -93,8 +113,8 @@ def subject(code):
         SELECT DISTINCT r.* FROM regulations r
         JOIN regulation_subjects rs ON r.id = rs.regulation_id
         WHERE rs.subject_id = ANY(%s)
-        ORDER BY r.title
     """, (subject_ids,))
+    regulations.sort(key=lambda r: (doc_type_sort_key(r["doc_type"]), r["title"] or ""))
     return render_template("subject.html", subject=subj, children=children,
                            breadcrumb=breadcrumb, regulations=regulations)
 
@@ -115,8 +135,9 @@ def tag_detail(tag_id):
     regulations = query("""
         SELECT r.* FROM regulations r
         JOIN regulation_tags rt ON r.id = rt.regulation_id
-        WHERE rt.tag_id=%s ORDER BY r.title
+        WHERE rt.tag_id=%s
     """, (tag_id,))
+    regulations.sort(key=lambda r: (doc_type_sort_key(r["doc_type"]), r["title"] or ""))
     return render_template("tag_detail.html", tag=tag, regulations=regulations)
 
 @app.route("/regeling/<cvdr_id>")
@@ -136,9 +157,42 @@ def regulation(cvdr_id):
         JOIN regulation_subjects rs ON s.id = rs.subject_id
         WHERE rs.regulation_id=%s ORDER BY s.depth, s.name_nl
     """, (reg["id"],))
-    refs = query("SELECT * FROM law_references WHERE regulation_id=%s ORDER BY ref_type, ref_name", (reg["id"],))
+    refs_raw = query("SELECT * FROM law_references WHERE regulation_id=%s ORDER BY ref_type, ref_name", (reg["id"],))
+    # Enrich refs with links
+    refs = []
+    for r in refs_raw:
+        ref = dict(r)
+        ref["link"] = None
+        name = r["ref_name"] or ""
+        # Local CVDR references
+        if name.startswith("CVDR"):
+            cvdr_id = name.split()[0].split(",")[0]
+            local = query("SELECT cvdr_id, title FROM regulations WHERE cvdr_id=%s", (cvdr_id,), one=True)
+            if local:
+                ref["link"] = f"/regeling/{local['cvdr_id']}"
+                ref["link_title"] = local["title"]
+        # National law links
+        ref_type = (r["ref_type"] or "").lower()
+        if not ref["link"] and ref_type in ("national_law", "legislation", "law", "act", "statute",
+                "primary_legislation", "national legislation", "dutch law", "wet", "legal statute"):
+            ref["link"] = f"https://wetten.overheid.nl/zoeken?q={name.replace(' ', '+')}"
+        refs.append(ref)
+    # Build article_id → subjects mapping
+    art_subjects = {}
+    if articles:
+        art_ids = [a["id"] for a in articles]
+        art_sub_rows = query("""
+            SELECT ars.article_id, s.id, s.code, s.name_nl
+            FROM article_subjects ars
+            JOIN subjects s ON s.id = ars.subject_id
+            WHERE ars.article_id = ANY(%s)
+            ORDER BY s.depth, s.name_nl
+        """, (art_ids,))
+        for row in art_sub_rows:
+            art_subjects.setdefault(row["article_id"], []).append(row)
     return render_template("regulation.html", reg=reg, sections=sections,
-                           articles=articles, tags=reg_tags, subjects=subjects, refs=refs)
+                           articles=articles, tags=reg_tags, subjects=subjects,
+                           refs=refs, article_subjects=art_subjects)
 
 @app.route("/api/search")
 def api_search():

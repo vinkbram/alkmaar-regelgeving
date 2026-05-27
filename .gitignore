@@ -3,5 +3,4 @@ __pycache__/
 .env
 *.db-journal
 *.db-wal
-data/
 migrate_to_pg.py

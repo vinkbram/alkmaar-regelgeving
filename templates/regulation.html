@@ -72,8 +72,17 @@
 <div class="card">
     <h2>Artikelen ({{ articles|length }})</h2>
     {% for a in articles %}
-    <div class="article-block">
-        <div class="article-title">Artikel {{ a.article_number }}{% if a.article_title %} — {{ a.article_title }}{% endif %}</div>
+    <div class="article-block" id="art-{{ a.article_number }}">
+        <div class="article-header">
+            <span class="article-title">Artikel {{ a.article_number }}{% if a.article_title %} — {{ a.article_title }}{% endif %}</span>
+            {% if article_subjects and a.id in article_subjects %}
+            <div class="article-subjects">
+                {% for s in article_subjects[a.id] %}
+                <a href="/onderwerp/{{ s.code }}" class="tag tag-small">{{ s.name_nl }}</a>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
         <div class="article-body">{{ a.body|truncate(500) }}</div>
     </div>
     <hr style="border: none; border-top: 1px solid var(--gray-200); margin: 0.5rem 0;">
