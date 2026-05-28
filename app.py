@@ -211,7 +211,16 @@ def search():
     classification = request.args.get("c", "")
     results = []
     matching_tags = []
-    if q:
+    if q and classification:
+        results = query("""
+            SELECT *, ts_rank(tsv, plainto_tsquery('dutch', %s)) as rank
+            FROM regulations
+            WHERE tsv @@ plainto_tsquery('dutch', %s)
+              AND proposal_classification = %s
+            ORDER BY rank DESC
+            LIMIT 100
+        """, (q, q, classification))
+    elif q:
         results = query("""
             SELECT *, ts_rank(tsv, plainto_tsquery('dutch', %s)) as rank
             FROM regulations
@@ -219,7 +228,12 @@ def search():
             ORDER BY rank DESC
             LIMIT 100
         """, (q, q))
-        # Match tags by label or synonym
+    elif classification:
+        results = query("""
+            SELECT * FROM regulations WHERE proposal_classification=%s
+            ORDER BY title
+        """, (classification,))
+    if q:
         q_lower = q.lower()
         matching_tags = query("""
             SELECT tg.id, tg.label, tg.synonyms,
@@ -231,11 +245,6 @@ def search():
             GROUP BY tg.id, tg.label, tg.synonyms
             ORDER BY tg.label
         """, (f"%{q_lower}%", f"%{q_lower}%"))
-    elif classification:
-        results = query("""
-            SELECT * FROM regulations WHERE proposal_classification=%s
-            ORDER BY title
-        """, (classification,))
     return render_template("search.html", q=q, classification=classification,
                            results=results, matching_tags=matching_tags)
 

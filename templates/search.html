@@ -4,12 +4,13 @@
 <h1>Zoeken</h1>
 <form action="/zoeken" method="get" class="search-form">
     <input type="search" name="q" placeholder="Zoek op trefwoord, titel, of inhoud..." value="{{ q }}" autofocus>
+    {% if classification %}<input type="hidden" name="c" value="{{ classification }}">{% endif %}
 </form>
 
 <div class="filter-chips">
-    <a href="/zoeken?q={{ q }}" class="chip {% if not classification %}active{% endif %}">Alles</a>
+    <a href="/zoeken{% if q %}?q={{ q }}{% endif %}" class="chip {% if not classification %}active{% endif %}">Alles</a>
     {% for key, (label, color) in classification_nl.items() %}
-    <a href="/zoeken?q={{ q }}&c={{ key }}" class="chip {% if classification == key %}active{% endif %}">{{ label }}</a>
+    <a href="/zoeken?{% if q %}q={{ q }}&{% endif %}c={{ key }}" class="chip {% if classification == key %}active{% endif %}">{{ label }}</a>
     {% endfor %}
 </div>
 
