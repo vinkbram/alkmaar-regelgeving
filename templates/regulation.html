@@ -39,31 +39,6 @@
 </div>
 {% endif %}
 
-{% if reg_tags %}
-<div class="card">
-    <h2>Tags</h2>
-    <div class="tag-cloud">
-        {% for t in reg_tags %}
-        <a href="/tag/{{ t.id }}" class="tag">{{ t.label }}</a>
-        {% endfor %}
-    </div>
-</div>
-{% endif %}
-
-{% if sections %}
-<div class="card">
-    <h2>Inhoudsopgave</h2>
-    {% for s in sections %}
-    {% if not s.parent_id %}
-    <div class="section-block">
-        <h3>{{ s.number }} {{ s.title }}</h3>
-        {% if s.body %}<p style="font-size: 0.9rem; color: var(--gray-700);">{{ s.body|truncate(300) }}</p>{% endif %}
-    </div>
-    {% endif %}
-    {% endfor %}
-</div>
-{% endif %}
-
 {% if articles %}
 <div class="card">
     <h2>Artikelen ({{ articles|length }})</h2>

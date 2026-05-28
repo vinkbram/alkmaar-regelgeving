@@ -19,20 +19,19 @@
 
 {% for rg in reg_groups %}
 <div class="card">
-    {% set dti = doc_type_info.get(rg.doc_type, doc_type_default) %}
     <div style="display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.5rem;">
+        {% set dti = doc_type_info.get(rg.doc_type, doc_type_default) %}
         <span class="badge badge-doctype">{{ dti[1] }}</span>
         {% set cls = classification_nl.get(rg.proposal_classification, ("?","green")) %}
         <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
         <a href="/regeling/{{ rg.cvdr_id }}?tag={{ tag.id }}" style="font-weight: 600; text-decoration: none; color: var(--gray-900);">{{ rg.title }}</a>
     </div>
-    {% for a in rg.articles %}
-    <div class="article-block" style="margin-left: 1rem;">
-        <span class="article-title">Artikel {{ a.article_number }}{% if a.article_title %} — {{ a.article_title }}{% endif %}</span>
-        <div class="article-body">{{ a.body|truncate(300) }}</div>
-    </div>
-    {% if not loop.last %}<hr style="border: none; border-top: 1px solid var(--gray-200); margin: 0.25rem 1rem;">{% endif %}
-    {% endfor %}
+    <p style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.5rem;">
+        Tag <strong>{{ tag.label }}</strong> komt voor in {{ rg.tag_count }} artikel{{ 'en' if rg.tag_count != 1 else '' }}
+    </p>
+    {% if rg.summary %}
+    <p style="font-size: 0.9rem; color: var(--gray-700);">{{ rg.summary }}</p>
+    {% endif %}
 </div>
 {% endfor %}
 {% endblock %}

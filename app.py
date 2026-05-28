@@ -179,29 +179,18 @@ def tag_detail(tag_id):
         WHERE tt.tag_id = %s
         LIMIT 1
     """, (tag_id,), one=True)
-    # Articles with this tag, grouped by regulation
-    articles = query("""
-        SELECT a.*, r.cvdr_id, r.title as reg_title, r.doc_type, r.proposal_classification
-        FROM articles a
+    # Regulations with this tag, including summary and article count for this tag
+    regs_with_tag = query("""
+        SELECT r.cvdr_id, r.title, r.doc_type, r.proposal_classification, r.summary,
+               COUNT(DISTINCT at.article_id) as tag_count
+        FROM regulations r
+        JOIN articles a ON a.regulation_id = r.id
         JOIN article_tags at ON at.article_id = a.id
-        JOIN regulations r ON r.id = a.regulation_id
         WHERE at.tag_id = %s
-        ORDER BY r.title, a.sort_order
+        GROUP BY r.cvdr_id, r.title, r.doc_type, r.proposal_classification, r.summary
+        ORDER BY r.title
     """, (tag_id,))
-    # Group by regulation
-    reg_groups = {}
-    for a in articles:
-        key = a["cvdr_id"]
-        if key not in reg_groups:
-            reg_groups[key] = {
-                "cvdr_id": a["cvdr_id"],
-                "title": a["reg_title"],
-                "doc_type": a["doc_type"],
-                "proposal_classification": a["proposal_classification"],
-                "articles": []
-            }
-        reg_groups[key]["articles"].append(a)
-    reg_list = sorted(reg_groups.values(), key=lambda r: reg_sort_key(r))
+    reg_list = sorted(regs_with_tag, key=lambda r: reg_sort_key(r))
     return render_template("tag_detail.html", tag=tag, topic=topic, reg_groups=reg_list)
 
 @app.route("/tags")
