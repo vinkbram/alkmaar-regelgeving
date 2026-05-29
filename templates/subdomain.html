@@ -1,20 +1,77 @@
 {% extends "base.html" %}
-{% block title %}{{ subdomain.name }} — Regelgeving Alkmaar{% endblock %}
+{% block title %}{{ subdomain.commissie_name }} — Regelgeving Alkmaar{% endblock %}
 {% block content %}
 <div class="breadcrumb">
-    <a href="/">Overzicht</a> &rsaquo; {{ subdomain.commissie_name }} &rsaquo; {{ subdomain.name }}
+    <a href="/">Overzicht</a> &rsaquo; {{ subdomain.commissie_name }}
 </div>
 
-<h1>{{ subdomain.name }}</h1>
+<h1>{{ subdomain.commissie_name }}</h1>
 
-{% for tp in topics %}
-<div class="card">
-    <h2><a href="/topic/{{ tp.code }}" style="text-decoration: none; color: var(--green-mid);">{{ tp.name }}</a> <span class="tag-count">({{ tp.article_count }} artikelen)</span></h2>
-    <div class="tag-cloud">
-        {% for tg in tp.tags %}
-        <a href="/tag/{{ tg.id }}" class="tag">{{ tg.label }} <span class="tag-count">({{ tg.article_count }})</span></a>
+<div class="commissie-columns">
+    {% for sib in siblings %}
+    <div class="commissie-column {% if sib.code == subdomain.code %}active-subdomain{% endif %}">
+        <h2><a href="/onderwerp/{{ sib.code }}" style="text-decoration: none; color: var(--green-dark);">{{ sib.name }}</a></h2>
+        <div class="tag-cloud">
+            {% for tg in sib.tags %}
+            <a href="/tag/{{ tg.id }}" class="tag">{{ tg.label }} <span class="tag-count">({{ tg.article_count }})</span></a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<h2>Regelingen binnen {{ subdomain.name }} ({{ total_filtered }})</h2>
+
+{% macro filter_params() %}{% endmacro %}
+
+<div class="pagination-bar">
+    <div class="page-size">
+        Toon
+        {% for pp in [10, 20, 50, 100] %}
+        <a href="/onderwerp/{{ subdomain.code }}?pp={{ pp }}" class="chip {% if per_page == pp %}active{% endif %}">{{ pp }}</a>
         {% endfor %}
+        per pagina
+    </div>
+    <div class="page-nav">
+        {% if page > 1 %}
+        <a href="/onderwerp/{{ subdomain.code }}?pp={{ per_page }}&p={{ page - 1 }}" class="chip">&laquo; Vorige</a>
+        {% endif %}
+        <span class="page-info">Pagina {{ page }} van {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/onderwerp/{{ subdomain.code }}?pp={{ per_page }}&p={{ page + 1 }}" class="chip">Volgende &raquo;</a>
+        {% endif %}
     </div>
 </div>
-{% endfor %}
+
+<ul class="reg-list">
+    {% for r in regulations %}
+    {% set dti = doc_type_info.get(r.doc_type, doc_type_default) %}
+    <li class="reg-item-card">
+        <div class="reg-badges">
+            <span class="badge badge-doctype" title="{{ dti[2] }}">{{ dti[1] }}</span>
+            {% set cls = classification_nl.get(r.proposal_classification, ("?","green")) %}
+            <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
+        </div>
+        <div class="reg-content">
+            <a href="/regeling/{{ r.cvdr_id }}" class="reg-card-title">{{ r.title }}</a>
+            {% if r.summary %}<p class="reg-summary">{{ r.summary }}</p>{% endif %}
+            <div class="reg-meta">{{ r.authority or "?" }} &middot; {{ r.effective_from or "?" }}</div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+
+{% if total_pages > 1 %}
+<div class="pagination-bar">
+    <div class="page-nav">
+        {% if page > 1 %}
+        <a href="/onderwerp/{{ subdomain.code }}?pp={{ per_page }}&p={{ page - 1 }}" class="chip">&laquo; Vorige</a>
+        {% endif %}
+        <span class="page-info">Pagina {{ page }} van {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/onderwerp/{{ subdomain.code }}?pp={{ per_page }}&p={{ page + 1 }}" class="chip">Volgende &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}

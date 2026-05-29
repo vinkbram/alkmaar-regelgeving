@@ -4,20 +4,10 @@
 <h1>Regelgeving gemeente Alkmaar</h1>
 <p>Alle {{ total }} geldende regelingen, individueel beoordeeld op actualiteit en wettelijke grondslag.</p>
 
-<div class="stats">
-    {% for key, (label, color) in classification_nl.items() %}
-    <a href="/zoeken?c={{ key }}" class="stat">
-        <div class="stat-number {{ color }}">{{ counts.get(key, 0) }}</div>
-        <div class="stat-label">{{ label }}</div>
-    </a>
-    {% endfor %}
-</div>
-
-<h2>Navigatie per commissie</h2>
-{% for c in commissies %}
-<div class="commissie-section">
-    <h3>{{ c.name }}</h3>
-    <div class="subject-grid">
+<div class="commissie-columns">
+    {% for c in commissies %}
+    <div class="commissie-column">
+        <h2>{{ c.name }}</h2>
         {% for sd in c.subdomains %}
         <div class="subject-card">
             <h3><a href="/onderwerp/{{ sd.code }}">{{ sd.name }}</a></h3>
@@ -25,6 +15,70 @@
         </div>
         {% endfor %}
     </div>
+    {% endfor %}
 </div>
-{% endfor %}
+
+<h2>Alle regelingen ({{ total_filtered }} van {{ total }})</h2>
+
+<div class="filter-chips">
+    {% for key, (label, color) in classification_nl.items() %}
+    {% set is_active = key in active_filters %}
+    {% set new_filters = active_filters|reject("equalto", key)|list if is_active else active_filters + [key] %}
+    <a href="/?{% for f in new_filters %}c={{ f }}&{% endfor %}pp={{ per_page }}"
+       class="chip {% if is_active %}active{% endif %}">
+        {{ label }} ({{ counts.get(key, 0) }})
+    </a>
+    {% endfor %}
+</div>
+
+{% macro filter_params() %}{% for f in active_filters %}c={{ f }}&{% endfor %}{% endmacro %}
+
+<div class="pagination-bar">
+    <div class="page-size">
+        Toon
+        {% for pp in [10, 20, 50, 100] %}
+        <a href="/?{{ filter_params() }}pp={{ pp }}" class="chip {% if per_page == pp %}active{% endif %}">{{ pp }}</a>
+        {% endfor %}
+        per pagina
+    </div>
+    <div class="page-nav">
+        {% if page > 1 %}
+        <a href="/?{{ filter_params() }}pp={{ per_page }}&p={{ page - 1 }}" class="chip">&laquo; Vorige</a>
+        {% endif %}
+        <span class="page-info">Pagina {{ page }} van {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/?{{ filter_params() }}pp={{ per_page }}&p={{ page + 1 }}" class="chip">Volgende &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+
+<ul class="reg-list">
+    {% for r in regulations %}
+    {% set dti = doc_type_info.get(r.doc_type, doc_type_default) %}
+    <li class="reg-item-card">
+        <div class="reg-badges">
+            <span class="badge badge-doctype" title="{{ dti[2] }}">{{ dti[1] }}</span>
+            {% set cls = classification_nl.get(r.proposal_classification, ("?","green")) %}
+            <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
+        </div>
+        <div class="reg-content">
+            <a href="/regeling/{{ r.cvdr_id }}" class="reg-card-title">{{ r.title }}</a>
+            {% if r.summary %}<p class="reg-summary">{{ r.summary }}</p>{% endif %}
+            <div class="reg-meta">{{ r.authority or "?" }} &middot; {{ r.effective_from or "?" }}</div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+
+<div class="pagination-bar">
+    <div class="page-nav">
+        {% if page > 1 %}
+        <a href="/?{{ filter_params() }}pp={{ per_page }}&p={{ page - 1 }}" class="chip">&laquo; Vorige</a>
+        {% endif %}
+        <span class="page-info">Pagina {{ page }} van {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="/?{{ filter_params() }}pp={{ per_page }}&p={{ page + 1 }}" class="chip">Volgende &raquo;</a>
+        {% endif %}
+    </div>
+</div>
 {% endblock %}

@@ -88,38 +88,96 @@ def index():
             WHERE s.commissie_id = %s
             ORDER BY s.name
         """, (c["id"],))
-    return render_template("index.html", counts=counts, commissies=commissies, total=475)
+    # Filter regulations
+    active_filters = request.args.getlist("c")
+    if not active_filters:
+        active_filters = [k for k in CLASSIFICATION_NL if k not in ("registercorrectie", "intrekken")]
+    # Pagination
+    per_page = request.args.get("pp", "20", type=str)
+    per_page = int(per_page) if per_page in ("10", "20", "50", "100") else 20
+    page = request.args.get("p", 1, type=int)
+    if page < 1:
+        page = 1
+    offset = (page - 1) * per_page
+    total_filtered = query("""
+        SELECT COUNT(*) as n FROM regulations
+        WHERE proposal_classification = ANY(%s)
+    """, (active_filters,), one=True)["n"]
+    total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+    if page > total_pages:
+        page = total_pages
+        offset = (page - 1) * per_page
+    regulations = query("""
+        SELECT * FROM regulations
+        WHERE proposal_classification = ANY(%s)
+        ORDER BY effective_from DESC NULLS LAST, title
+        LIMIT %s OFFSET %s
+    """, (active_filters, per_page, offset))
+    return render_template("index.html", counts=counts, commissies=commissies, total=475,
+                           regulations=regulations, active_filters=active_filters,
+                           page=page, per_page=per_page, total_pages=total_pages,
+                           total_filtered=total_filtered)
 
 @app.route("/onderwerp/<code>")
 def subdomain(code):
-    subdom = query("SELECT s.*, c.name as commissie_name, c.code as commissie_code FROM subdomains s JOIN commissies c ON c.id = s.commissie_id WHERE s.code=%s", (code,), one=True)
+    subdom = query("SELECT s.*, c.name as commissie_name, c.code as commissie_code, c.id as commissie_id FROM subdomains s JOIN commissies c ON c.id = s.commissie_id WHERE s.code=%s", (code,), one=True)
     if not subdom:
         return "Onderwerp niet gevonden", 404
-    # Topics under this subdomain with tag counts
-    topics = query("""
-        SELECT t.*,
-               COUNT(DISTINCT at.article_id) as article_count
-        FROM topics t
-        JOIN subdomain_topics st ON st.topic_id = t.id
-        LEFT JOIN topic_tags tt ON tt.topic_id = t.id
-        LEFT JOIN article_tags at ON at.tag_id = tt.tag_id
-        WHERE st.subdomain_id = %s
-        GROUP BY t.id, t.code, t.name
-        ORDER BY t.name
-    """, (subdom["id"],))
-    # For each topic, get its tags with article count
-    for tp in topics:
-        tp["tags"] = query("""
-            SELECT tg.id, tg.label, tg.synonyms,
+    # All subdomains of the same commissie, each with their tags
+    siblings = query("SELECT * FROM subdomains WHERE commissie_id=%s ORDER BY name", (subdom["commissie_id"],))
+    for sib in siblings:
+        sib["tags"] = query("""
+            SELECT DISTINCT tg.id, tg.label,
                    COUNT(DISTINCT at.article_id) as article_count
             FROM tags tg
             JOIN topic_tags tt ON tt.tag_id = tg.id
+            JOIN subdomain_topics st ON st.topic_id = tt.topic_id
             LEFT JOIN article_tags at ON at.tag_id = tg.id
-            WHERE tt.topic_id = %s
-            GROUP BY tg.id, tg.label, tg.synonyms
+            WHERE st.subdomain_id = %s
+            GROUP BY tg.id, tg.label
             ORDER BY tg.label
-        """, (tp["id"],))
-    return render_template("subdomain.html", subdomain=subdom, topics=topics)
+        """, (sib["id"],))
+    # Collect tag IDs for THIS subdomain to filter regulations
+    all_tag_ids = query("""
+        SELECT DISTINCT tt.tag_id
+        FROM topic_tags tt
+        JOIN subdomain_topics st ON st.topic_id = tt.topic_id
+        WHERE st.subdomain_id = %s
+    """, (subdom["id"],))
+    tag_ids = [t["tag_id"] for t in all_tag_ids]
+    # Pagination
+    per_page = request.args.get("pp", "20", type=str)
+    per_page = int(per_page) if per_page in ("10", "20", "50", "100") else 20
+    page = request.args.get("p", 1, type=int)
+    if page < 1:
+        page = 1
+    offset = (page - 1) * per_page
+    total_filtered = 0
+    regulations = []
+    if tag_ids:
+        total_filtered = query("""
+            SELECT COUNT(DISTINCT r.id) as n FROM regulations r
+            JOIN articles a ON a.regulation_id = r.id
+            JOIN article_tags at ON at.article_id = a.id
+            WHERE at.tag_id = ANY(%s)
+        """, (tag_ids,), one=True)["n"]
+        total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+        if page > total_pages:
+            page = total_pages
+            offset = (page - 1) * per_page
+        regulations = query("""
+            SELECT DISTINCT r.* FROM regulations r
+            JOIN articles a ON a.regulation_id = r.id
+            JOIN article_tags at ON at.article_id = a.id
+            WHERE at.tag_id = ANY(%s)
+            ORDER BY r.effective_from DESC NULLS LAST, r.title
+            LIMIT %s OFFSET %s
+        """, (tag_ids, per_page, offset))
+    else:
+        total_pages = 1
+    return render_template("subdomain.html", subdomain=subdom, siblings=siblings,
+                           regulations=regulations, page=page, per_page=per_page,
+                           total_pages=total_pages, total_filtered=total_filtered)
 
 @app.route("/topic/<code>")
 def topic(code):
@@ -179,19 +237,56 @@ def tag_detail(tag_id):
         WHERE tt.tag_id = %s
         LIMIT 1
     """, (tag_id,), one=True)
-    # Regulations with this tag, including summary and article count for this tag
-    regs_with_tag = query("""
-        SELECT r.cvdr_id, r.title, r.doc_type, r.proposal_classification, r.summary,
-               COUNT(DISTINCT at.article_id) as tag_count
+    # Classification filter
+    active_filters = request.args.getlist("c")
+    if not active_filters:
+        active_filters = [k for k in CLASSIFICATION_NL if k not in ("registercorrectie", "intrekken")]
+    # Count per classification for this tag
+    counts = {}
+    for r in query("""
+        SELECT r.proposal_classification, COUNT(DISTINCT r.id) as n
         FROM regulations r
         JOIN articles a ON a.regulation_id = r.id
         JOIN article_tags at ON at.article_id = a.id
         WHERE at.tag_id = %s
-        GROUP BY r.cvdr_id, r.title, r.doc_type, r.proposal_classification, r.summary
-        ORDER BY r.title
-    """, (tag_id,))
-    reg_list = sorted(regs_with_tag, key=lambda r: reg_sort_key(r))
-    return render_template("tag_detail.html", tag=tag, topic=topic, reg_groups=reg_list)
+        GROUP BY r.proposal_classification
+    """, (tag_id,)):
+        counts[r["proposal_classification"]] = r["n"]
+    # Pagination
+    per_page = request.args.get("pp", "20", type=str)
+    per_page = int(per_page) if per_page in ("10", "20", "50", "100") else 20
+    page = request.args.get("p", 1, type=int)
+    if page < 1:
+        page = 1
+    offset = (page - 1) * per_page
+    total_filtered = query("""
+        SELECT COUNT(DISTINCT r.id) as n
+        FROM regulations r
+        JOIN articles a ON a.regulation_id = r.id
+        JOIN article_tags at ON at.article_id = a.id
+        WHERE at.tag_id = %s AND r.proposal_classification = ANY(%s)
+    """, (tag_id, active_filters), one=True)["n"]
+    total_pages = max(1, (total_filtered + per_page - 1) // per_page)
+    if page > total_pages:
+        page = total_pages
+        offset = (page - 1) * per_page
+    regulations = query("""
+        SELECT r.cvdr_id, r.title, r.doc_type, r.proposal_classification, r.summary,
+               r.authority, r.effective_from,
+               COUNT(DISTINCT at.article_id) as tag_count
+        FROM regulations r
+        JOIN articles a ON a.regulation_id = r.id
+        JOIN article_tags at ON at.article_id = a.id
+        WHERE at.tag_id = %s AND r.proposal_classification = ANY(%s)
+        GROUP BY r.cvdr_id, r.title, r.doc_type, r.proposal_classification, r.summary,
+                 r.authority, r.effective_from
+        ORDER BY COUNT(DISTINCT at.article_id) DESC, r.title
+        LIMIT %s OFFSET %s
+    """, (tag_id, active_filters, per_page, offset))
+    return render_template("tag_detail.html", tag=tag, topic=topic, regulations=regulations,
+                           active_filters=active_filters, counts=counts,
+                           page=page, per_page=per_page, total_pages=total_pages,
+                           total_filtered=total_filtered)
 
 @app.route("/tags")
 def tags():

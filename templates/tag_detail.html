@@ -5,9 +5,6 @@
     <a href="/">Overzicht</a>
     {% if topic %}
     &rsaquo; <a href="/onderwerp/{{ topic.subdomain_code }}">{{ topic.subdomain_name }}</a>
-    &rsaquo; <a href="/topic/{{ topic.code }}">{{ topic.name }}</a>
-    {% else %}
-    &rsaquo; <a href="/tags">Tags</a>
     {% endif %}
     &rsaquo; {{ tag.label }}
 </div>
@@ -15,23 +12,75 @@
 <h1>{{ tag.label }}</h1>
 {% if tag.synonyms %}<p style="color: var(--gray-500); font-size: 0.9rem;">Synoniemen: {{ tag.synonyms|replace('|', ', ') }}</p>{% endif %}
 
-<p>{{ reg_groups|length }} regelingen</p>
+<h2>Regelingen ({{ total_filtered }})</h2>
 
-{% for rg in reg_groups %}
-<div class="card">
-    <div style="display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.5rem;">
-        {% set dti = doc_type_info.get(rg.doc_type, doc_type_default) %}
-        <span class="badge badge-doctype">{{ dti[1] }}</span>
-        {% set cls = classification_nl.get(rg.proposal_classification, ("?","green")) %}
-        <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
-        <a href="/regeling/{{ rg.cvdr_id }}?tag={{ tag.id }}" style="font-weight: 600; text-decoration: none; color: var(--gray-900);">{{ rg.title }}</a>
-    </div>
-    <p style="font-size: 0.85rem; color: var(--gray-500); margin-bottom: 0.5rem;">
-        Tag <strong>{{ tag.label }}</strong> komt voor in {{ rg.tag_count }} artikel{{ 'en' if rg.tag_count != 1 else '' }}
-    </p>
-    {% if rg.summary %}
-    <p style="font-size: 0.9rem; color: var(--gray-700);">{{ rg.summary }}</p>
+{% macro base_url() %}/tag/{{ tag.id }}?{% endmacro %}
+{% macro filter_params() %}{% for f in active_filters %}c={{ f }}&{% endfor %}{% endmacro %}
+
+<div class="filter-chips">
+    {% for key, (label, color) in classification_nl.items() %}
+    {% if counts.get(key, 0) > 0 %}
+    {% set is_active = key in active_filters %}
+    {% set new_filters = active_filters|reject("equalto", key)|list if is_active else active_filters + [key] %}
+    <a href="{{ base_url() }}{% for f in new_filters %}c={{ f }}&{% endfor %}pp={{ per_page }}"
+       class="chip {% if is_active %}active{% endif %}">
+        {{ label }} ({{ counts.get(key, 0) }})
+    </a>
     {% endif %}
+    {% endfor %}
 </div>
-{% endfor %}
+
+<div class="pagination-bar">
+    <div class="page-size">
+        Toon
+        {% for pp in [10, 20, 50, 100] %}
+        <a href="{{ base_url() }}{{ filter_params() }}pp={{ pp }}" class="chip {% if per_page == pp %}active{% endif %}">{{ pp }}</a>
+        {% endfor %}
+        per pagina
+    </div>
+    <div class="page-nav">
+        {% if page > 1 %}
+        <a href="{{ base_url() }}{{ filter_params() }}pp={{ per_page }}&p={{ page - 1 }}" class="chip">&laquo; Vorige</a>
+        {% endif %}
+        <span class="page-info">Pagina {{ page }} van {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ base_url() }}{{ filter_params() }}pp={{ per_page }}&p={{ page + 1 }}" class="chip">Volgende &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+
+<ul class="reg-list">
+    {% for rg in regulations %}
+    <li class="reg-item-card">
+        <div class="reg-badges">
+            {% set dti = doc_type_info.get(rg.doc_type, doc_type_default) %}
+            <span class="badge badge-doctype">{{ dti[1] }}</span>
+            {% set cls = classification_nl.get(rg.proposal_classification, ("?","green")) %}
+            <span class="badge badge-{{ cls[1] }}">{{ cls[0] }}</span>
+        </div>
+        <div class="reg-content">
+            <a href="/regeling/{{ rg.cvdr_id }}?tag={{ tag.id }}" class="reg-card-title">{{ rg.title }}</a>
+            <p style="font-size: 0.8rem; color: var(--gray-500); margin: 0.25rem 0;">
+                Tag <strong>{{ tag.label }}</strong> in {{ rg.tag_count }} artikel{{ 'en' if rg.tag_count != 1 else '' }}
+            </p>
+            {% if rg.summary %}<p class="reg-summary">{{ rg.summary }}</p>{% endif %}
+            <div class="reg-meta">{{ rg.authority or "?" }} &middot; {{ rg.effective_from or "?" }}</div>
+        </div>
+    </li>
+    {% endfor %}
+</ul>
+
+{% if total_pages > 1 %}
+<div class="pagination-bar">
+    <div class="page-nav">
+        {% if page > 1 %}
+        <a href="{{ base_url() }}{{ filter_params() }}pp={{ per_page }}&p={{ page - 1 }}" class="chip">&laquo; Vorige</a>
+        {% endif %}
+        <span class="page-info">Pagina {{ page }} van {{ total_pages }}</span>
+        {% if page < total_pages %}
+        <a href="{{ base_url() }}{{ filter_params() }}pp={{ per_page }}&p={{ page + 1 }}" class="chip">Volgende &raquo;</a>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 {% endblock %}
